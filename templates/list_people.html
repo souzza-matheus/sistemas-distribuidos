@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Pessoas</title>
+    <link rel="stylesheet" href="./styles/index.css">
+</head>
+
+<body>
+    <header>
+        <h1>Gerenciador de Pessoas</h1>
+    </header>
+
+    <section class="add-person">
+        <h2>Adicionar Pessoa</h2>
+        <form id="add-person-form">
+            <div class="form-group">
+                <label for="nome">Nome:</label>
+                <input type="text" id="nome" name="nome" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <button type="submit">Adicionar</button>
+        </form>
+    </section>
+
+    <section class="list-people">
+        <h2>Lista de Pessoas</h2>
+        <ul id="people-list">
+            <!-- JavaScript will populate this list -->
+        </ul>
+    </section>
+
+    <script>
+        // JavaScript to confirm deletion
+        function confirmDelete(name) {
+            const confirmMsg = `Tem certeza de que deseja excluir a pessoa "${name}"?`;
+            return confirm(confirmMsg);
+        }
+    </script>
+
+    <script>
+        // JavaScript to handle form submission via AJAX
+        const addPersonForm = document.getElementById('add-person-form');
+        const peopleList = document.getElementById('people-list');
+        
+        addPersonForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(addPersonForm);
+
+            try {
+                console.log(addPersonForm)
+                console.log(formData)
+                const response = await fetch('http://localhost:5000/add_person', { // Add port 5000
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    // Clear the form
+                    addPersonForm.reset();
+                    // Refresh the list of people
+                    await refreshPeopleList();
+                } else {
+                    console.error('Failed to add person:', response.status);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        async function refreshPeopleList() {
+            try {
+                const response = await fetch('http://localhost:5000/list_people'); // Add port 5000
+                if (response.ok) {
+                    const people = await response.json();
+                    renderPeopleList(people);
+                } else {
+                    console.error('Failed to fetch people list:', response.status);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function deletePerson(name) {
+            if (confirmDelete(name)) {
+                fetch(`http://localhost:5000/delete_person/${name}`, {
+                    method: 'POST',
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            // Reload the list of people after successful deletion
+                            refreshPeopleList();
+                        } else {
+                            console.error(`Failed to delete person '${name}':`, response.status);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }
+        }
+
+        function updatePerson(name) {
+            console.log(name)
+            const updatePersonForm = document.getElementById('update-person-form');
+
+            updatePersonForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                console.log(updatePersonForm)
+                const formData = new FormData(updatePersonForm);
+                console.log(formData)
+                try {
+                    const response = await fetch(`http://localhost:5000/update_person/${name}`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        // Clear the form
+                        updatePersonForm.reset();
+                        // Refresh the list of people
+                        await refreshPeopleList();
+                    } else {
+                        console.error('Failed to update person:', response.status);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+
+
+
+
+        function renderPeopleList(people) {
+            const listItems = people.map((person) => {
+                return `
+                    <li>
+                        <div class="person-info">
+                            <span class="person-name">${person.nome}</span>
+                            <span class="person-email">${person.email}</span>
+                        </div>
+                        <div class="person-actions">
+                            <form id="update-person-form">
+                                <input type="hidden" id="update-person-name" name="nome" value="">
+                                <div class="form-group">
+                                    <label for="update-person-email">Novo Email:</label>
+                                    <input type="email" id="update-person-email" name="email" required>
+                                </div>
+                                <button class="update-button" onclick="updatePerson('${person.nome}')">Atualizar</button>
+                            </form>
+                            </form>
+                            <button class="delete-button" onclick="deletePerson('${person.nome}')">Excluir</button> <!-- Use a button element -->
+                        </div>
+                    </li>
+                `;
+            });
+
+            peopleList.innerHTML = listItems.join('');
+        }
+
+        // Initial load of people list
+        refreshPeopleList();
+    </script>
+</body>
+
+</html>
